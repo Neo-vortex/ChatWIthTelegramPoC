@@ -14,7 +14,7 @@ Follow the steps below to set up and run the project locally.
 ### Prerequisites
 
 - [.NET SDK](https://dotnet.microsoft.com/download)
-- [Ollama CLI](https://github.com/ollama/ollama)
+- [Ollama CLI with llama2 model ](https://github.com/jmorganca/ollama)
 
 ### Installation
 
