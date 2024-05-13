@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using OllamaSharp;
 using TL;
 
 namespace sample;
@@ -102,7 +103,7 @@ class MainClass
             CommandType = tmp  switch
             {
                 "[SEND]" => CommandType.Send,
-                "[SUMMERIZE]" => CommandType.Summerize,
+                "[SUMMARIZE]" => CommandType.Summerize,
                 _ => throw new InvalidOperationException("invalid command")
             },
             UserName = userName,
@@ -144,18 +145,20 @@ public static class AiResponseGenerator
         var ollama = new OllamaApiClient(new Uri(Environment.GetEnvironmentVariable("ollama_url") ?? throw new InvalidOperationException("ollama_url is not set")));
         Console.WriteLine("Getting models...");
         var models = (await ollama.ListLocalModels()).ToList();
-        if (!models.Any())
+        if (models.Count == 0)
         {
             throw new InvalidOperationException("No models found\n try to install one like `ollama pull llama2`");
         }
         var modelName = Environment.GetEnvironmentVariable("model_name") ?? models.First().Name;
+        ollama.SelectedModel = modelName;
         Console.WriteLine("using model: " + modelName);
-        _context = await ollama.GetCompletion(COMMAND_PREPEX + query,modelName , _context);
+        _context = await ollama.GetCompletion(COMMAND_PREPEX + query , _context);
         return _context.Response;
     }
     public static async Task<string> GenerateRawResponse(string query)
     {
         var ollama = new OllamaApiClient(new Uri(Environment.GetEnvironmentVariable("ollama_url") ?? throw new InvalidOperationException("ollama_url is not set")));
+
         Console.WriteLine("Getting models...");
         var models = (await ollama.ListLocalModels()).ToList();
         if (!models.Any())
@@ -163,8 +166,9 @@ public static class AiResponseGenerator
             throw new InvalidOperationException("No models found\n try to install one like `ollama pull llama2`");
         }
         var modelName = Environment.GetEnvironmentVariable("model_name") ?? models.First().Name;
+        ollama.SelectedModel = modelName;
         Console.WriteLine("using model: " + modelName);
-        _context = await ollama.GetCompletion( query,modelName , _context);
+        _context = await ollama.GetCompletion( query , _context);
         return _context.Response;
     }
     
@@ -178,8 +182,9 @@ public static class AiResponseGenerator
             throw new InvalidOperationException("No models found\n try to install one like `ollama pull llama2`");
         }
         var modelName = Environment.GetEnvironmentVariable("model_name") ?? models.First().Name;
+        ollama.SelectedModel = modelName;
         Console.WriteLine("using model: " + modelName);
-        _context = await ollama.GetCompletion( SUMMERIZE_PREPEX + query,modelName , _context);
+        _context = await ollama.GetCompletion( SUMMERIZE_PREPEX + query , _context);
         return _context.Response;
     }
 }
