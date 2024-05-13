@@ -12,9 +12,16 @@ internal enum CommandType
 
 internal struct Command
 {
-    public CommandType CommandType;
-    public string UserName;
-    public string Message;
+    public CommandType CommandType { get; set; }
+    public string UserName { get; set; }
+    public string Message { get; set; }
+}
+
+internal struct CommandR
+{
+    public string CommandType { get; set; }
+    public string UserName { get; set; }
+    public string Message { get; set; }
 }
 
 
@@ -93,21 +100,16 @@ class MainClass
 
     private static Command ParseCommandFromString(string command)
     {
-        var commandParts = command.Split(" ");
-        var commandType = commandParts[0];
-        var userName = commandParts[1];
-        var message = string.Join(" ", commandParts.Skip(2));
-        var tmp = commandType.ToUpper().Trim();
+        var processed = System.Text.Json.JsonSerializer.Deserialize<CommandR>(command);
         return new Command()
         {
-            CommandType = tmp  switch
+            CommandType = processed.CommandType.ToUpper() switch
             {
-                "[SEND]" => CommandType.Send,
-                "[SUMMARIZE]" => CommandType.Summerize,
-                _ => throw new InvalidOperationException("invalid command")
+                "SEND" => CommandType.Send,
+                "SUMMERIZE" => CommandType.Summerize
             },
-            UserName = userName,
-            Message = message
+            UserName = processed.UserName,
+            Message = processed.Message
         };
     }
 }
@@ -123,25 +125,26 @@ public static class AiResponseGenerator
                                   you need to process the user input below and classify the command and the arguments
                                   note that if you classify the input as SEND, you may need to generate message yourself based on the deduction you made from the user input
                                   note that usernames have a @ at the begginging. do not remove any underline or hyphen from username
-                                  you need to output like this :
-                                  
-                                  [SEND] [USERNAME] [MESSAGE]
-                                  
-                                  [SUMMERIZE] [USERNAME]
-                                  
-                                  DO NOT OUTPUT ANYTHING ELSE
+                                  you need to output a json like this :
+                                  {
+                                    CommandType: "SEND" (or SUMMERIZE),
+                                    UserName : (the username from user input),
+                                    UserName : (the actual message)
+                                  }
+
+                                  just output the json, nothing else
                                   
                                   Here is the userinput:
                                   
                                   """;
 
     private const string SUMMERIZE_PREPEX = """
-                                            please summerize the conversion below :
+                                            please summerize the conversion below and only return the summery and nothing from you side :
                                             
                                             """;
-    private static  ConversationContextWithResponse _context;
     public static async Task<string> GenerateResponse(string query)
     {
+        ConversationContextWithResponse context = null;
         var ollama = new OllamaApiClient(new Uri(Environment.GetEnvironmentVariable("ollama_url") ?? throw new InvalidOperationException("ollama_url is not set")));
         Console.WriteLine("Getting models...");
         var models = (await ollama.ListLocalModels()).ToList();
@@ -152,11 +155,12 @@ public static class AiResponseGenerator
         var modelName = Environment.GetEnvironmentVariable("model_name") ?? models.First().Name;
         ollama.SelectedModel = modelName;
         Console.WriteLine("using model: " + modelName);
-        _context = await ollama.GetCompletion(COMMAND_PREPEX + query , _context);
-        return _context.Response;
+        context = await ollama.GetCompletion(COMMAND_PREPEX + query , context);
+        return context.Response;
     }
     public static async Task<string> GenerateRawResponse(string query)
     {
+        ConversationContextWithResponse context = null;
         var ollama = new OllamaApiClient(new Uri(Environment.GetEnvironmentVariable("ollama_url") ?? throw new InvalidOperationException("ollama_url is not set")));
 
         Console.WriteLine("Getting models...");
@@ -168,12 +172,13 @@ public static class AiResponseGenerator
         var modelName = Environment.GetEnvironmentVariable("model_name") ?? models.First().Name;
         ollama.SelectedModel = modelName;
         Console.WriteLine("using model: " + modelName);
-        _context = await ollama.GetCompletion( query , _context);
-        return _context.Response;
+        context = await ollama.GetCompletion( query , context);
+        return context.Response;
     }
     
     public static async Task<string> GenerateSummerizeResponse(string query)
     {
+        ConversationContextWithResponse context = null;
         var ollama = new OllamaApiClient(new Uri(Environment.GetEnvironmentVariable("ollama_url") ?? throw new InvalidOperationException("ollama_url is not set")));
         Console.WriteLine("Getting models...");
         var models = (await ollama.ListLocalModels()).ToList();
@@ -184,7 +189,7 @@ public static class AiResponseGenerator
         var modelName = Environment.GetEnvironmentVariable("model_name") ?? models.First().Name;
         ollama.SelectedModel = modelName;
         Console.WriteLine("using model: " + modelName);
-        _context = await ollama.GetCompletion( SUMMERIZE_PREPEX + query , _context);
-        return _context.Response;
+        context = await ollama.GetCompletion( SUMMERIZE_PREPEX + query , context);
+        return context.Response;
     }
 }
